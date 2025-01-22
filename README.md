@@ -1,11 +1,11 @@
 # SOC-Project
 
 ## Objective
-In this lab, we will explore the practical aspects of setting up a Security Operations Center (SOC) home lab. Our focus will be on understanding and implementing Security Orchestration, Automation, and Response (SOAR) solutions.  We will gain hands-on experience with real-world scenarios, enhancing our skills as SOC analysts.
+In this lab, we will explore the practical aspects of setting up a Security Operations Center (SOC) home lab. Our focus will be on understanding and implementing Security Orchestration, Automation, and Response (SOAR) solutions.  This would help you to gain hands-on experience with real-world scenarios as a SOC analyst.
 
-# Building a Home Lab for SOC Analyst Learning: A Journey into SOAR Solutions 🚀
+# Building a Home Lab for SOC Analyst Learning: A Journey into SOAR Solutions 
 
-I'm thrilled to share my latest project—an experimental learning endeavor focused on **SOC (Security Operations Center)** analysis. In this project, we'll explore the architecture and components of a home lab designed for hands-on experience with security event management, orchestration, and automated threat response.
+Here I am sharing my latest work,focusing on **SOC (Security Operations Center)** analysis. In this project, we'll explore the architecture and components for a home lab designed for hands-on experience with security event management, orchestration, and automated threat response.
 
 ## Lab Structure
 
