@@ -282,8 +282,8 @@ Feel free to explore this setup, adapt it to your needs, and embark on your own 
    ```
 
 2. **Add Windows 10 Agent to Wazuh:**
-   - Click on "Add Agent" and select "Windows" as package.
-   - Enter Wazuh Public IP as server address.
+   - Click "Add Agent" and select "Windows" as a package.
+   - Enter Wazuh Public IP as the server address.
    - Assign an agent name.
    - Copy the provided command and run it on the Windows 10 machine.
    - Start Wazuh agent service:
@@ -295,6 +295,130 @@ Feel free to explore this setup, adapt it to your needs, and embark on your own 
    - After a few minutes, the Windows 10 agent should appear as active in the Wazuh Dashboard.
 
 ---
+Well done! TheHive and Wazuh are now configured.
 
+## Configuration on Windows 10
 
+### Modify ossec.conf File
 
+1. **Navigate to ossec.conf File:**
+    
+    ```
+    This PC > Local Disk(C:) > Program Files(x86) > ossec-agent
+    
+    ```
+    
+2. **Backup ossec.conf File:**
+    - Right-click on ossec.conf file and select "Copy", then right-click again and select "Paste" to create a backup named ossec-backup.conf.
+3. **Edit ossec.conf File:**
+    - Open ossec.conf with Notepad as Administrator.
+4. **Add Sysmon Rule:**
+    
+    ```xml
+    <!-- Log analysis -->
+    <localfile>
+      <location>Microsoft-Windows-Sysmon/Operational</location>
+      <log_format>eventchannel</log_format>
+    </localfile>
+    
+    ```
+    
+5. **Restart Wazuh Service:**
+    - Open services.msc and restart the Wazuh service.
+
+### Download and Execute Mimikatz
+
+1. **Exclude Downloads Folder from Windows Defender:**
+    - Open Windows Security > Virus & threat protection > Virus & threat protection settings > Manage settings > Add or remove exclusion > Exclude downloads folder.
+2. **Download and Extract Mimikatz:**
+    - Download Mimikatz from [here](https://github.com/gentilkiwi/mimikatz/releases/tag/2.2.0-20220919).
+    - Extract the downloaded file in the excluded downloads folder.
+3. **Execute Mimikatz:**
+    - Open an Administrator PowerShell session.
+    - Navigate to the folder containing Mimikatz.
+    - Run Mimikatz: `.\\mimikatz.exe`.
+
+### Modify ossec.conf for Logging
+
+1. **Edit ossec.conf:**
+    
+    ```bash
+    nano /var/ossec/etc/ossec.conf
+    
+    ```
+    
+2. **Set Logging Options:**
+    
+    ```xml
+    <logall>yes</logall>
+    <logall_json>yes</logall_json>
+    
+    ```
+    
+3. **Restart Wazuh:**
+    
+    ```bash
+    systemctl restart wazuh-manager.service
+    
+    ```
+    
+
+### Create New Index on Wazuh
+
+1. **Access Wazuh Stack Management:**
+    - Click on the hamburger icon > Stack Management > Index Patterns.
+2. **Create New Index for Archives:**
+    - Click "Create index" and type `wazuh-archives-**`.
+    - Select timestamp and create the index pattern.
+
+### Create Custom Alerts on Wazuh
+
+1. **Navigate to Rules Management:**
+    - Home > Management > Rules > Manage rule files.
+2. **Copy Sysmon Rule:**
+    - Find the desired rule (e.g., 0800-sysmon_id_1.xml) and copy its content.
+3. **Edit Local Rules:**
+    - Click on "Custom rules" and edit the local_rules.xml file.
+4. **Paste and Customize Custom Rule:**
+    - Paste the copied rule and modify it as needed (e.g., set custom rule id to 100002, change description).
+5. **Restart Wazuh:**
+    - Confirm the server restart.
+
+### Verify Alert
+
+1. **Run Mimikatz:**
+    - Execute Mimikatz on your Windows 10 machine.
+2. **Check for Alerts:**
+    - Verify if the alert appears in Wazuh.
+
+## Shuffler Configuration (SOAR Platform)
+
+### Set up Webhook on Shuffler
+
+1. **Access Shuffler Website:**
+    - Go to [Shuffler website](https://shuffler.io/workflows).
+2. **Add Webhook Trigger:**
+    - Navigate to Triggers and drag and drop the Webhook trigger.
+    - Click on the Webhook app and copy the Webhook URI.
+3. **Integrate with OSSEC:**
+    - Open the ossec.conf file on the Wazuh manager: `nano /var/ossec/etc/ossec.conf`.
+    - Add the integration tag under the first global rule, replacing the hook URL with the copied URL from Shuffler Webhook.
+    - Paste the following under the first global rule, replacing the hook URL with the copied URL from Shuffle Webhook:
+
+```bash
+<integration>
+ <name>shuffle</name>
+ <hook_url><https://shuffler.io/api/v1/hooks/webhook_1a37e289-23db-4098-9337-35c2b157488f> </hook_url>
+ <rule_id>100002</rule_id>
+ <alert_format>json</alert_format>
+</integration>
+
+```
+
+- Note: Your webhook URL will be different so paste that in the integration tag.
+1. **Restart Wazuh Manager Service:**
+    
+    ```bash
+    systemctl restart wazuh-manager.service
+    
+    ```
