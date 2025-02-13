@@ -5,7 +5,7 @@ In this lab, we will explore the practical aspects of setting up a Security Oper
 
 # Building a Home Lab for SOC Analyst Learning: A Journey into SOAR Solutions 
 
-Here I am sharing my latest work,focusing on **SOC (Security Operations Center)** analysis. In this project, we'll explore the architecture and components for a home lab designed for hands-on experience with security event management, orchestration, and automated threat response.
+Here I am sharing my latest work, focusing on **SOC (Security Operations Center)** analysis. In this project, we'll explore the architecture and components for a home lab designed for hands-on experience with security event management, orchestration, and automated threat response.
 
 ## Lab Structure
 
@@ -15,7 +15,7 @@ Here I am sharing my latest work,focusing on **SOC (Security Operations Center)*
 
 2. **Wazuh Manager Server**:
    - The central hub for collecting and managing security events from Windows 10 agents.
-   - It acts as the nerve center of our SOC setup.
+   - It acts as the nerve centre of our SOC setup.
 
 3. **Shuffle Integration**:
    - Orchestrates the flow of data—from event collection to response actions.
@@ -422,3 +422,167 @@ Well done! TheHive and Wazuh are now configured.
     systemctl restart wazuh-manager.service
     
     ```
+### Telemetry Generation and Workflow Execution
+
+1. **Regenerate Telemetry:**
+    - Run Mimikatz on the Windows 10 machine.
+2. **Execute Workflow on Shuffler:**
+    - Start the Webhook execution on the Shuffler instance.
+3. **Check Executions on Shuffler:**
+    - Go to the Person tab to view the executions.
+4. **Create Workflow in Shuffler:**
+    - Define the workflow steps:
+        1. Mimikatz alert sent to Shuffler.
+        2. Shuffle Receives Mimikatz alert and extracts SHA256 Hash.
+        3. Check Reputation score using VirusTotal.
+        4. Send details to TheHive to create Alert.
+        5. Send Email to SOC Analyst to Begin Investigation.
+5. **Configure Regex Capture Group:**
+    - Set Find Actions to Regex capture group and define the SHA256 Regex.
+6. **Utilize VirusTotal API:**
+    - Create an account on VirusTotal and obtain the API key.
+    - Add the VirusTotal app to the workflow and set Find Actions to "Get hash report" using the API key.
+
+### Send Alerts to TheHive
+
+1. **Create User and Organization in TheHive:**
+    - Add users and organization in TheHive.
+2. **Generate API Key:**
+    - Generate API key for the user in TheHive.
+3. **Configure Workflow in Shuffle:**
+    - Set up the workflow to create an alert in TheHive using the obtained API key and URL.
+4. **Run Workflow:**
+    - Rerun the workflow on Shuffler.
+
+### Email Notification to SOC Analyst
+
+1. **Add Email App to Workflow:**
+    - Drag and drop the email app and connect it to the VirusTotal app.
+
+### Configuration for SMTP Email:
+
+### Find Action: Send email SMTP
+
+- **SMTP Host:** [smtp.office365.com](http://smtp.office365.com/)
+- **Port:** 587
+- **Username:** \<Your outlook email\>@outlook.com
+- **Password:** \<App password - You can get this through this link - [App Password Link](https://account.live.com/proofs/Manage/additional)\>
+- **Recipient:** \<Any email address where you want to send this alert email\>
+- **Subject:** Mimikatz Usage Detected!!!
+
+**Body:**
+
+- Time: $exec.text.win.eventdata.utcTime
+- Title: $exec.title
+- Host: $exec.text.win.system.computer
+- **Ssl verify:** True
+
+### Configure Responsive Action in Shuffle
+
+1. **Block Source IPs Attempting to Connect to Ubuntu Machine via SSH:**
+    - Allow all TCP connections to the Ubuntu machine in the cloud FW.
+    - Add an HTTP application to the Shuffle workflow.
+2. **Workflow:**
+    - **Name:** Get-API
+    - **Find Actions:** Curl
+    - Ensure a firewall rule exists to allow all inbound traffic to Wazuh for port 55000.
+    - Use the Wazuh API to authenticate and obtain a JWT token.
+        
+        ```bash
+        # GET-API (Wazuh for token)
+        curl -u user:PASSWORD -k -X GET "https://<Wazuh-IP>:55000/security/user/authenticate?raw=true"
+        
+        ```
+        
+3. **Drag and Drop Wazuh Application to the Workflow:**
+    - **Find Actions:** Run command
+    - **API Key:** Get-API node
+    - **URL:** https://(Wazuh-IP):55000
+    - **Agent List:** <agent ID>
+    - **Wait for Complete:** True
+    - **Command:** firewall-drop0
+    - **Alert:** `{"data":{"srcip":"$exec.all_fields.data.srcip"}}`
+4. **Configure Active Response on Wazuh Console:**
+    - Edit the ossec.conf file:
+        
+        ```bash
+        nano /var/ossec/etc/ossec.conf
+        
+        ```
+        
+    - Add the following at the end of active response commands:
+        
+        ```xml
+        <active-response>
+          <command>firewall-drop</command>
+          <location>local</location>
+          <level>15</level>
+          <timeout>no</timeout>
+        </active-response>
+        
+        ```
+        
+    - Save the file and restart the Wazuh manager:
+        
+        ```bash
+        systemctl restart wazuh-manager
+        
+        ```
+        
+5. **View Available Active Responses:**
+    - `cd /var/ossec/bin
+    ls
+    ./agent_control -L`
+    - Obtain the agent list from the Wazuh dashboard.
+6. **Test Active Response:**
+    - Run the following command:
+        
+        ```bash
+        ./agent_control -b 8.8.8.8 -f firewall-drop0 -u 002
+        
+        ```
+        
+    - Start a ping to 8.8.8.8 on the Ubuntu machine before running this command.
+    - Verify if 8.8.8.8 is blocked by active response from Wazuh:
+        
+        ```bash
+        iptables --list
+        
+        ```
+        
+    - Flush iptables if needed:
+        
+        ```bash
+        iptables --flush
+        
+        ```
+        
+    - Check Active Response logs on the Ubuntu machine:
+        
+        ```bash
+        cd /var/ossec/logs/
+        ls
+        cat active-responses.log
+        
+        ```
+        
+7. **Setup User Input:**
+    - Go to Trigger and select User Input.
+    - **Email:** Analyst email
+    - **Information:** Would you like to block the source IP: <src IP>
+
+### Workflow:
+
+Wazuh-Alert ---> Get-API ---> VirusTotal --> User Input ---> Wazuh ---> TheHive
+
+## Conclusion
+
+Congratulations on completing the SOC automation project! 
+
+By implementing Shuffler, integrating with OSSEC/Wazuh, and orchestrating workflows, you've taken significant steps towards enhancing security operations and incident response capabilities.
+
+As you continue to refine and expand upon this automation framework, remember the importance of continuous improvement and adaptation to evolving threats.
+
+Thank you for your dedication and effort in advancing our security posture. Together, we're better equipped to safeguard our systems and data against cyber threats.
+
+Cheers to a safer and more efficient SOC environment! 
